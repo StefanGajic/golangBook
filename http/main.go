@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"./utils"
+	"github.com/gorilla/mux"
 )
 
 type DB struct {
@@ -51,38 +52,11 @@ func (p *DB) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	default:
 		p.Lock()
-		//update
-		for item, _ := range p.db {
-			p.db = append(p.db[:item], p.db[item:]...)
-
-		}
+		p.db[id] = item
 		p.Unlock()
 	}
 
 }
-
-// 	item := r.FormValue("item")
-// 	if item == "" {
-// 		http.Error(w, "No item given", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	priceStr := r.FormValue("price")
-// 	price, err := strconv.Atoi(priceStr)
-// 	if err != nil {
-// 		http.Error(w, "No integer price given", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	if _, ok := p.db[item]; !ok {
-// 		http.Error(w, fmt.Sprintf("%s doesn't exist", item), http.StatusNotFound)
-// 		return
-// 	}
-
-// 	p.Lock()
-// 	p.db[item] = price
-// 	p.Unlock()
-// }
 
 func (p *DB) Delete(w http.ResponseWriter, r *http.Request) {
 
@@ -132,26 +106,23 @@ func (p *DB) htmlList(w http.ResponseWriter, r *http.Request) {
 	utils.ExecuteTemplate(w, "index.html", p.db)
 }
 
-// func ArticlesCategoryHandler(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-// 	w.WriteHeader(http.StatusOK)
-// 	cat := vars["id"]
-
-// 	fmt.Fprintf(w, "Name: %v\n", cat)
-// }
+func ArticlesCategoryHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	w.WriteHeader(http.StatusOK)
+	cat := vars["id"]
+	fmt.Println(cat)
+	fmt.Fprintf(w, "Name: %v\n", cat)
+}
 
 func main() {
 	db := &DB{}
-	//r := mux.NewRouter()
-	//db.db = make(map[string]int, 0)
-	//db.db["shoe"] = 100
+	r := mux.NewRouter()
 	utils.LoadTemplates("templates/*.html")
-	http.HandleFunc("/create", db.Create)
-	http.HandleFunc("/read", db.Read)
-	http.HandleFunc("/update", db.Update)
-	http.HandleFunc("/delete", db.Delete)
-	//http.HandleFunc("/list", db.List)
-	http.HandleFunc("/list", db.htmlList)
-	//http.HandleFunc("/list/{id}", ArticlesCategoryHandler)
-	log.Fatal(http.ListenAndServe(":8000", nil))
+	r.HandleFunc("/create", db.Create)
+	r.HandleFunc("/read", db.Read)
+	r.HandleFunc("/update", db.Update)
+	r.HandleFunc("/delete", db.Delete)
+	r.HandleFunc("/list", db.htmlList)
+	r.HandleFunc("/items/{id}", ArticlesCategoryHandler)
+	log.Fatal(http.ListenAndServe(":8000", r))
 }
