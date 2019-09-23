@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"sync"
 
 	"./utils"
@@ -15,13 +16,11 @@ type DB struct {
 }
 
 func (p *DB) Create(w http.ResponseWriter, r *http.Request) {
-	//id := r.FormValue("id")
 	item := r.FormValue("item")
 	switch item {
 	case "":
 		http.Error(w, "No item given", http.StatusBadRequest)
 		return
-	//case "1":
 	default:
 		p.Lock()
 		p.db = append(p.db, item)
@@ -31,19 +30,30 @@ func (p *DB) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *DB) Update(w http.ResponseWriter, r *http.Request) {
-
-	//id := r.FormValue("id")
+	///update?id=2&item=zz
+	idc := r.FormValue("id")
+	id, _ := strconv.Atoi(idc)
 	item := r.FormValue("item")
+
+	if len(p.db)-1 < id {
+		http.Error(w, "no item of that id", http.StatusBadRequest)
+		return
+	}
+
+	if idc == "" {
+		http.Error(w, "No id given", http.StatusBadRequest)
+		return
+	}
+
 	switch item {
 	case "":
 		http.Error(w, "No item given", http.StatusBadRequest)
 		return
-	//case "1":
 	default:
 		p.Lock()
 		//update
 		for item, _ := range p.db {
-			p.db = append(p.db[:item], p.db[item+1:]...)
+			p.db = append(p.db[:item], p.db[item:]...)
 
 		}
 		p.Unlock()
@@ -76,95 +86,47 @@ func (p *DB) Update(w http.ResponseWriter, r *http.Request) {
 
 func (p *DB) Delete(w http.ResponseWriter, r *http.Request) {
 
-	item := r.FormValue("item")
-	switch item {
-	case "":
-		http.Error(w, "No item given", http.StatusBadRequest)
+	idc := r.FormValue("id")
+	id, _ := strconv.Atoi(idc)
+	if len(p.db)-1 < id {
+		http.Error(w, "no particular id", http.StatusBadRequest)
 		return
-	case item:
+	}
+
+	switch idc {
+	case "":
+		http.Error(w, "No id given", http.StatusBadRequest)
+		return
+
+	default:
 		p.Lock()
-		//delete(p.db, item)
-		//p.db[item] = p.db[len(p.db)-1]
-		p.db[len(p.db)-1] = ""
-		p.db = p.db[:len(p.db)-1]
-
-		//p.db[len(p.db)-1] = ""
-		//p.db = p.db[:len(p.db)-1] // brise poslednji
-
-		//a = append(p.db[:item], p.db[item+1:]...)
-
-		//p.db = append(p.db[:item[0]], p.db[item[0]+1:]...)
-		//p.db = append(p.db[:])
-		// func remove(db []int, s int) []int {
-		// 	return append(db[:s], db[s+1:]...)
-		// }
-
-		// func remove(p.db []string, i string) []string {
-		// 	copy(slice[i:], slice[i+1:])
-		// 	return slice[:len(slice)-1]
-		//   }
-
-		// func remove(p.db []int, s int) []int {
-		// 	return append(p.db[:s], p.db[s+1:]...)
-		// }
-
-		//copy(p.db[i:], p.db[i+1:])
-		//p.db[len(p.db)-1] = nil
-
-		//p.db = append(p.db, item)
+		id, _ := strconv.Atoi(idc)
+		sl := p.db
+		sl = append(sl[0:id], sl[id+1:]...)
+		p.db = sl
 		p.Unlock()
 	}
 }
-
-// 	item := r.FormValue("item")
-// 	if item == "" {
-// 		http.Error(w, "No item given", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	if _, ok := p.db[item]; !ok {
-// 		http.Error(w, fmt.Sprintf("%s doesn't exist", item), http.StatusNotFound)
-// 		return
-// 	}
-
-// 	p.Lock()
-// 	delete(p.db, item)
-// 	p.Unlock()
-// }
 
 func (p *DB) Read(w http.ResponseWriter, r *http.Request) {
-	item := r.FormValue("item")
-	switch item {
-	case "":
-		http.Error(w, "No item given", http.StatusBadRequest)
+	idc := r.FormValue("id")
+	id, _ := strconv.Atoi(idc)
+	if len(p.db)-1 < id {
+		http.Error(w, "no item of that id", http.StatusBadRequest)
 		return
-	// case read:
-	// 	http.Error(w, fmt.Sprintf("%s doesn't exist", item), http.StatusNotFound)
-	// 	return
-	case item:
-		p.Lock()
-		fmt.Fprintf(w, "%s \n", item)
-		//p.db = append(p.db, item)
-		p.Unlock()
 	}
 
+	if idc == "" {
+		http.Error(w, "No id given", http.StatusBadRequest)
+		return
+	}
+
+	p.Lock()
+	var item = p.db[id]
+	fmt.Fprintf(w, "%s \n", item)
+	p.Unlock()
+
 }
-
-// 	item := r.FormValue("item")
-// 	if item == "" {
-// 		http.Error(w, "No item given", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	if _, ok := p.db[item]; !ok {
-// 		http.Error(w, fmt.Sprintf("%s doesn't exist", item), http.StatusNotFound)
-// 		return
-// 	}
-
-// 	p.Lock()
-// 	fmt.Fprintf(w, "%s: %d\n", item, p.db[item])
-// 	p.Unlock()
-// }
 
 func (p *DB) htmlList(w http.ResponseWriter, r *http.Request) {
 	utils.ExecuteTemplate(w, "index.html", p.db)
@@ -191,5 +153,5 @@ func main() {
 	//http.HandleFunc("/list", db.List)
 	http.HandleFunc("/list", db.htmlList)
 	//http.HandleFunc("/list/{id}", ArticlesCategoryHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8000", nil))
 }
