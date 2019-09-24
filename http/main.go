@@ -112,18 +112,18 @@ func (p *DB) htmlList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *DB) GetOneItem(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)["id"]
-	w.WriteHeader(http.StatusOK)
-	idd, err := strconv.Atoi(vars)
+	idStr := mux.Vars(r)["id"]
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if len(p.db)-1 < idd {
+	if len(p.db)-1 < id {
 		http.Error(w, "no item with that id", http.StatusBadRequest)
 		return
 	}
-	fmt.Fprintf(w, "%s\n", p.db[idd])
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "%s\n", p.db[id])
 }
 
 func main() {
