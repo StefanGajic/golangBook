@@ -31,16 +31,20 @@ func (p *DB) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *DB) Update(w http.ResponseWriter, r *http.Request) {
-	idc := r.FormValue("id")
-	id, _ := strconv.Atoi(idc)
+	idStr := r.FormValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	item := r.FormValue("item")
 
 	if len(p.db)-1 < id {
-		http.Error(w, "no item of that id", http.StatusBadRequest)
+		http.Error(w, "no item with that id", http.StatusBadRequest)
 		return
 	}
 
-	if idc == "" {
+	if idStr == "" {
 		http.Error(w, "No id given", http.StatusBadRequest)
 		return
 	}
@@ -59,37 +63,41 @@ func (p *DB) Update(w http.ResponseWriter, r *http.Request) {
 
 func (p *DB) Delete(w http.ResponseWriter, r *http.Request) {
 
-	idc := r.FormValue("id")
-	id, _ := strconv.Atoi(idc)
+	idStr := r.FormValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if len(p.db)-1 < id {
 		http.Error(w, "no particular id", http.StatusBadRequest)
 		return
 	}
 
-	switch idc {
+	switch idStr {
 	case "":
 		http.Error(w, "No id given", http.StatusBadRequest)
 		return
 
 	default:
 		p.Lock()
-		id, _ := strconv.Atoi(idc)
-		sl := p.db
-		sl = append(sl[0:id], sl[id+1:]...)
-		p.db = sl
+		p.db = append(p.db[:id], p.db[id+1:]...)
 		p.Unlock()
 	}
 }
 
 func (p *DB) Read(w http.ResponseWriter, r *http.Request) {
-	idc := r.FormValue("id")
-	id, _ := strconv.Atoi(idc)
-
-	if len(p.db)-1 < id {
-		http.Error(w, "no item of that id", http.StatusBadRequest)
+	idStr := r.FormValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if idc == "" {
+	if len(p.db)-1 < id {
+		http.Error(w, "no item with that id", http.StatusBadRequest)
+		return
+	}
+	if idStr == "" {
 		http.Error(w, "No id given", http.StatusBadRequest)
 		return
 	}
@@ -106,10 +114,13 @@ func (p *DB) htmlList(w http.ResponseWriter, r *http.Request) {
 func (p *DB) GetOneItem(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)["id"]
 	w.WriteHeader(http.StatusOK)
-	idd, _ := strconv.Atoi(vars)
-
+	idd, err := strconv.Atoi(vars)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if len(p.db)-1 < idd {
-		http.Error(w, "no item of that id", http.StatusBadRequest)
+		http.Error(w, "no item with that id", http.StatusBadRequest)
 		return
 	}
 	fmt.Fprintf(w, "%s\n", p.db[idd])
