@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"./utils"
+	"github.com/gorilla/mux"
 )
 
 type DB struct {
@@ -30,17 +31,20 @@ func (p *DB) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *DB) Update(w http.ResponseWriter, r *http.Request) {
-	///update?id=2&item=zz
-	idc := r.FormValue("id")
-	id, _ := strconv.Atoi(idc)
+	idStr := r.FormValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	item := r.FormValue("item")
 
 	if len(p.db)-1 < id {
-		http.Error(w, "no item of that id", http.StatusBadRequest)
+		http.Error(w, "no item with that id", http.StatusBadRequest)
 		return
 	}
 
-	if idc == "" {
+	if idStr == "" {
 		http.Error(w, "No id given", http.StatusBadRequest)
 		return
 	}
@@ -51,107 +55,86 @@ func (p *DB) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	default:
 		p.Lock()
-		//update
-		for item, _ := range p.db {
-			p.db = append(p.db[:item], p.db[item:]...)
-
-		}
+		p.db[id] = item
 		p.Unlock()
 	}
 
 }
 
-// 	item := r.FormValue("item")
-// 	if item == "" {
-// 		http.Error(w, "No item given", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	priceStr := r.FormValue("price")
-// 	price, err := strconv.Atoi(priceStr)
-// 	if err != nil {
-// 		http.Error(w, "No integer price given", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	if _, ok := p.db[item]; !ok {
-// 		http.Error(w, fmt.Sprintf("%s doesn't exist", item), http.StatusNotFound)
-// 		return
-// 	}
-
-// 	p.Lock()
-// 	p.db[item] = price
-// 	p.Unlock()
-// }
-
 func (p *DB) Delete(w http.ResponseWriter, r *http.Request) {
 
-	idc := r.FormValue("id")
-	id, _ := strconv.Atoi(idc)
+	idStr := r.FormValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if len(p.db)-1 < id {
 		http.Error(w, "no particular id", http.StatusBadRequest)
 		return
 	}
 
-	switch idc {
+	switch idStr {
 	case "":
 		http.Error(w, "No id given", http.StatusBadRequest)
 		return
 
 	default:
 		p.Lock()
-		id, _ := strconv.Atoi(idc)
-		sl := p.db
-		sl = append(sl[0:id], sl[id+1:]...)
-		p.db = sl
+		p.db = append(p.db[:id], p.db[id+1:]...)
 		p.Unlock()
 	}
 }
 
 func (p *DB) Read(w http.ResponseWriter, r *http.Request) {
-	idc := r.FormValue("id")
-	id, _ := strconv.Atoi(idc)
-	if len(p.db)-1 < id {
-		http.Error(w, "no item of that id", http.StatusBadRequest)
+	idStr := r.FormValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	if idc == "" {
+	if len(p.db)-1 < id {
+		http.Error(w, "no item with that id", http.StatusBadRequest)
+		return
+	}
+	if idStr == "" {
 		http.Error(w, "No id given", http.StatusBadRequest)
 		return
 	}
-
 	p.Lock()
 	var item = p.db[id]
 	fmt.Fprintf(w, "%s \n", item)
 	p.Unlock()
-
 }
 
 func (p *DB) htmlList(w http.ResponseWriter, r *http.Request) {
 	utils.ExecuteTemplate(w, "index.html", p.db)
 }
 
-// func ArticlesCategoryHandler(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-// 	w.WriteHeader(http.StatusOK)
-// 	cat := vars["id"]
-
-// 	fmt.Fprintf(w, "Name: %v\n", cat)
-// }
+func (p *DB) GetOneItem(w http.ResponseWriter, r *http.Request) {
+	idStr := mux.Vars(r)["id"]
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if len(p.db)-1 < id {
+		http.Error(w, "no item with that id", http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "%s\n", p.db[id])
+}
 
 func main() {
 	db := &DB{}
-	//r := mux.NewRouter()
-	//db.db = make(map[string]int, 0)
-	//db.db["shoe"] = 100
+	r := mux.NewRouter()
 	utils.LoadTemplates("templates/*.html")
-	http.HandleFunc("/create", db.Create)
-	http.HandleFunc("/read", db.Read)
-	http.HandleFunc("/update", db.Update)
-	http.HandleFunc("/delete", db.Delete)
-	//http.HandleFunc("/list", db.List)
-	http.HandleFunc("/list", db.htmlList)
-	//http.HandleFunc("/list/{id}", ArticlesCategoryHandler)
-	log.Fatal(http.ListenAndServe(":8000", nil))
+	r.HandleFunc("/create", db.Create)
+	r.HandleFunc("/read", db.Read)
+	r.HandleFunc("/update", db.Update)
+	r.HandleFunc("/delete", db.Delete)
+	r.HandleFunc("/list", db.htmlList)
+	r.HandleFunc("/items/{id}", db.GetOneItem).Methods("GET")
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
