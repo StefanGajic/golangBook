@@ -22,6 +22,8 @@ type Comic struct {
 
 const URL = "https://xkcd.com/info.0.json"
 
+const allURL = "http://xkcd.com/%d/info.0.json"
+
 func getLastComic() (*Comic, error) {
 	comic, err := getComic(URL)
 	if err != nil {
@@ -51,39 +53,35 @@ func getComic(url string) (*Comic, error) {
 	return &comic, nil
 }
 
-func getLastFiveComics(comic *Comic, comicSlice *[]Comic) error {
+func getComics(startNum, comicsLength int) ([]Comic, error) {
 
-	for i := comic.Num - 1; i > comic.Num-5; i-- {
-		url := fmt.Sprintf("http://xkcd.com/%d/info.0.json", i)
-		temporaryComic, err := getComic(url)
+	comics := make([]Comic, 0, comicsLength)
+	for i := startNum; i < startNum+comicsLength; i++ {
+		url := fmt.Sprintf(allURL, i)
+		comic, err := getComic(url)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		*comicSlice = append(*comicSlice, *temporaryComic)
-	}
-	return nil
-}
+		comics = append(comics, *comic)
 
-func (c Comic) String() string {
-	return fmt.Sprintf("Month : %s\tNum : %d\tLink : %s\tYear : %s\tNews : %s\tTransscript : %s\tAlt: %s\tImg : %s\tTitle : %s\tDay : %s\t", c.Month, c.Num, c.Link, c.Year, c.News, c.Transcript, c.Alt, c.Img, c.Title, c.Day)
+	}
+	return comics, nil
 }
 
 func main() {
 
-	comic, err := getLastComic()
+	lastComic, err := getComic(URL)
 	if err != nil {
 		log.Fatal(err)
 	}
-	comics := []Comic{}
-	comics = append(comics, *comic)
 
-	err1 := getLastFiveComics(comic, &comics)
-	if err1 != nil {
-		log.Fatal(err1)
-	}
+	comicLength := 4
+	startComicNum := lastComic.Num - comicLength
+	comics, err := getComics(startComicNum, comicLength)
+	comics = append(comics, *lastComic)
 
 	for i, com := range comics {
 		fmt.Print(i+1, ": ")
-		fmt.Println(com.String())
+		fmt.Printf("%+v\n", com)
 	}
 }
