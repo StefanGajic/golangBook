@@ -13,7 +13,6 @@ type Comic struct {
 	Link       string
 	Year       string
 	News       string
-	Safe_title string
 	Transcript string
 	Alt        string
 	Img        string
@@ -23,10 +22,11 @@ type Comic struct {
 
 const URL = "https://xkcd.com/info.0.json"
 
+const allURL = "http://xkcd.com/%d/info.0.json"
+
 func getLastComic() (*Comic, error) {
 	comic, err := getComic(URL)
 	if err != nil {
-		log.Fatal(err)
 		return nil, err
 	}
 	return comic, nil
@@ -37,30 +37,51 @@ func getComic(url string) (*Comic, error) {
 	req, err := http.NewRequest("GET", url, nil)
 
 	if err != nil {
-		log.Fatal(err)
 		return nil, err
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 	var comic Comic
 	err = json.NewDecoder(resp.Body).Decode(&comic)
 	if err != nil {
-		log.Fatal(err)
 		return nil, err
 	}
 	return &comic, nil
 }
 
+func getComics(startNum, comicsLength int) ([]Comic, error) {
+
+	comics := make([]Comic, 0, comicsLength)
+	for i := startNum; i < startNum+comicsLength; i++ {
+		url := fmt.Sprintf(allURL, i)
+		comic, err := getComic(url)
+		if err != nil {
+			return nil, err
+		}
+		comics = append(comics, *comic)
+
+	}
+	return comics, nil
+}
+
 func main() {
 
-	comic, err := getLastComic()
+	lastComic, err := getComic(URL)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(comic)
+
+	comicLength := 4
+	startComicNum := lastComic.Num - comicLength
+	comics, err := getComics(startComicNum, comicLength)
+	comics = append(comics, *lastComic)
+
+	for i, com := range comics {
+		fmt.Print(i+1, ": ")
+		fmt.Printf("%+v\n", com)
+	}
 }
